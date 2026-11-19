@@ -1,21 +1,20 @@
 # 图像判定助手
 
-一个 Rokid 眼镜 AIUI 示例智能体：拍照或选择一张图片（非二维码），
-把图像交给**设备内置多模态大模型**或**第三方视觉 API** 做内容判定。
+Rokid 眼镜 AIUI 智能体：全屏显示摄像头实时画面；当镜头捕捉到指定目标时，画面叠加「识别正确 ✓」。
 
-## 能力
+## 行为
 
-- 拍照：`getUserMedia` + `ImageCapture.takePhoto({ mode: 'telephoto' })`
-- 图像编码：`Blob` → Data URL（base64）
-- 判定：
-  - 内置：`LanguageModel`（`image_url` 多模态输入）
-  - 第三方：`fetch` 调用 OpenAI 兼容视觉接口
+- 正常：只显示镜头实时画面，不显示静态照片。
+- 判定：每 3 秒抓一帧（grabFrame → Canvas → DataURL），交内置多模态模型判断是否命中目标。
+- 命中：叠加绿色「✓ 识别正确」。
+
+## 关键实现
+
+- 实时预览：`getUserMedia` → `URL.createObjectURL(stream)` → `<video>`
+- 抓帧：`ImageCapture.grabFrame()` → `new Canvas(...)` → `convertToBlob()`
+- 判定：`LanguageModel.create()` + `prompt([{type:'image_url',...}])`
+- 目标描述：`pages/index/index.ink` 顶部 `TARGET_DESC`
 
 ## 权限
 
-- `CAMERA`（拍照）
-
-## 接入第三方 API
-
-修改 `pages/index/index.ink` 顶部的 `VISION_API_URL` / `VISION_API_KEY` / `VISION_MODEL`。
-生产环境请求域名需在 Rokid 开发者后台报备。
+- `CAMERA`
