@@ -1,0 +1,14 @@
+{
+  "name": "图像判定助手",
+  "description": "拍照或选择图片，用内置模型或第三方视觉 API 判定图像内容。",
+  "pages": [
+    "pages/index/index"
+  ],
+  "permissions": [
+    "CAMERA",
+    "INTERNET"
+  ],
+  "window": {
+    "navigationBarTitleText": "图像判定助手"
+  }
+}
