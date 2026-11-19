@@ -7,7 +7,7 @@
 <script setup>
 // 目标描述：改这里即可换成你要识别的目标
 const TARGET_DESC = '一面白墙，墙上有很大的黑色书法字「金」和「鹽（盐）」，上方横匾写着「金字號」，是夜晚的中式老商铺';
-const MATCH_PROMPT = `这是眼镜摄像头的实时画面。${TARGET_DESC}。请判断画面里是否出现上述目标。如果能看到「金」或「鹽」或「金字號」这类字，就回答「是」；完全看不到就回答「否」。只回答一个字：是 或 否。`;
+const MATCH_PROMPT = `这是眼镜摄像头的实时画面。${TARGET_DESC}。请判断画面里是否出现上述目标。只要能看到「金」或「鹽」或「金字號」这类字，就回答「是」；完全看不到就回答「否」。只回答一个字：是 或 否。`;
 const CHECK_INTERVAL = 2500;
 
 async function blobToDataUrl(blob) {
@@ -31,7 +31,7 @@ export default {
     matched: false,
     status: '正在启动摄像头…',
     error: '',
-    debug: ''   // 临时调试行
+    debug: ''
   },
 
   onReady() { this.start(); },
@@ -55,7 +55,7 @@ export default {
       this.imageCapture = new ImageCapture(track);
       this.previewUrl = URL.createObjectURL(stream);
       this.setData({ previewSrc: this.previewUrl, cameraReady: true, status: '', error: '' });
-      console.log('[vision] camera ready, ImageCapture=', typeof ImageCapture, 'Canvas=', typeof Canvas);
+      console.log('[vision] camera ready; ImageCapture=', typeof ImageCapture, 'Canvas=', typeof Canvas);
       this.loopTimer = setInterval(() => this.tick(), CHECK_INTERVAL);
       setTimeout(() => this.tick(), 1200);
     } catch (error) {
@@ -74,27 +74,27 @@ export default {
     this.previewUrl = '';
   },
 
-  // 抓一帧：优先 takePhoto（直接返回编码 Blob，不依赖 Canvas），失败再退回 grabFrame+Canvas
+  // 静默抓一帧：grabFrame + Canvas（不弹拍照确认层），失败再退回 takePhoto
   async captureFrameDataUrl() {
     try {
-      const photo = await this.imageCapture.takePhoto({ quality: 'normal', mode: 'telephoto', enableSystemPreview: false });
-      console.log('[vision] takePhoto ok size=', photo && photo.size);
-      return await blobToDataUrl(photo);
+      const frame = await this.imageCapture.grabFrame();
+      try {
+        const w = 384;
+        const h = Math.max(120, Math.round((w * (frame.height || 216)) / (frame.width || 384)));
+        const canvas = new Canvas(w, h);
+        canvas.getContext('2d').drawImage(frame, 0, 0, w, h);
+        const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.75 });
+        console.log('[vision] grabFrame ok', w + 'x' + h, blob.size);
+        return await blobToDataUrl(blob);
+      } finally {
+        frame.close && frame.close();
+      }
     } catch (e1) {
-      console.log('[vision] takePhoto failed:', String(e1 && e1.message || e1));
+      console.log('[vision] grabFrame failed:', String(e1 && e1.message || e1));
     }
-    const frame = await this.imageCapture.grabFrame();
-    try {
-      const w = 384;
-      const h = Math.max(120, Math.round((w * (frame.height || 216)) / (frame.width || 384)));
-      const canvas = new Canvas(w, h);
-      canvas.getContext('2d').drawImage(frame, 0, 0, w, h);
-      const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.75 });
-      console.log('[vision] grabFrame ok', w + 'x' + h, blob.size);
-      return await blobToDataUrl(blob);
-    } finally {
-      frame.close && frame.close();
-    }
+    const photo = await this.imageCapture.takePhoto({ quality: 'normal', mode: 'telephoto', enableSystemPreview: false });
+    console.log('[vision] takePhoto fallback ok size=', photo && photo.size);
+    return await blobToDataUrl(photo);
   },
 
   async tick() {
@@ -105,7 +105,7 @@ export default {
       const availability = await timeout(LanguageModel.availability(), 5000, 'timeout');
       console.log('[vision] availability:', availability);
       if (availability !== 'available') {
-        this.setData({ error: '内置模型不可用（需真机）', debug: `模型:${availability}` });
+        this.setData({ error: '内置模型不可用（请用真机调试）', debug: `模型:${availability}` });
         return;
       }
       const dataUrl = await this.captureFrameDataUrl();
