@@ -74,33 +74,26 @@ export default {
     this.previewUrl = '';
   },
 
-  // 抓一帧，优先 grabFrame+Canvas，失败再退回 takePhoto
+  // 抓一帧：优先 takePhoto（直接返回编码 Blob，不依赖 Canvas），失败再退回 grabFrame+Canvas
   async captureFrameDataUrl() {
-    let lastErr;
-    try {
-      const frame = await this.imageCapture.grabFrame();
-      try {
-        const w = 384;
-        const h = Math.max(120, Math.round((w * (frame.height || 216)) / (frame.width || 384)));
-        const canvas = new Canvas(w, h);
-        canvas.getContext('2d').drawImage(frame, 0, 0, w, h);
-        const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.75 });
-        console.log('[vision] grabFrame ok', w + 'x' + h, blob.size);
-        return await blobToDataUrl(blob);
-      } finally {
-        frame.close && frame.close();
-      }
-    } catch (e1) {
-      lastErr = e1;
-      console.log('[vision] grabFrame failed:', String(e1 && e1.message || e1));
-    }
     try {
       const photo = await this.imageCapture.takePhoto({ quality: 'normal', mode: 'telephoto', enableSystemPreview: false });
-      console.log('[vision] takePhoto ok', photo.size);
+      console.log('[vision] takePhoto ok size=', photo && photo.size);
       return await blobToDataUrl(photo);
-    } catch (e2) {
-      console.log('[vision] takePhoto failed:', String(e2 && e2.message || e2));
-      throw e2 || lastErr;
+    } catch (e1) {
+      console.log('[vision] takePhoto failed:', String(e1 && e1.message || e1));
+    }
+    const frame = await this.imageCapture.grabFrame();
+    try {
+      const w = 384;
+      const h = Math.max(120, Math.round((w * (frame.height || 216)) / (frame.width || 384)));
+      const canvas = new Canvas(w, h);
+      canvas.getContext('2d').drawImage(frame, 0, 0, w, h);
+      const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.75 });
+      console.log('[vision] grabFrame ok', w + 'x' + h, blob.size);
+      return await blobToDataUrl(blob);
+    } finally {
+      frame.close && frame.close();
     }
   },
 
