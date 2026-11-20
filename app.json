@@ -1,11 +1,12 @@
 {
   "name": "图像判定助手",
-  "description": "拍照或选择图片，用内置模型或第三方视觉 API 判定图像内容。",
+  "description": "用眼镜摄像头拍照，内置模型判定是否命中目标",
   "pages": [
     "pages/index/index"
   ],
   "permissions": [
     "CAMERA",
+    "CREATE_MEDIA_IMAGES",
     "INTERNET"
   ],
   "window": {
